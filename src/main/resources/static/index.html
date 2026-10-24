@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>个人记账管理系统</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: #f4f6fa; color: #1f2937; min-height: 100vh;
+  }
+  .hidden { display: none !important; }
+
+  /* ============ 登录页 ============ */
+  #authView {
+    display: flex; align-items: center; justify-content: center; min-height: 100vh;
+    background: linear-gradient(135deg, #e8f0ff 0%, #f4f6fa 45%, #eef7f0 100%);
+  }
+  .auth-card {
+    width: 380px; background: #fff; border-radius: 16px; padding: 32px 28px;
+    box-shadow: 0 12px 40px rgba(30, 64, 175, 0.10);
+  }
+  .auth-card h1 { font-size: 22px; text-align: center; margin-bottom: 6px; }
+  .auth-card .sub { text-align: center; color: #8a94a6; font-size: 13px; margin-bottom: 24px; }
+  .tabs { display: flex; background: #f1f4f9; border-radius: 10px; padding: 4px; margin-bottom: 20px; }
+  .tabs div {
+    flex: 1; text-align: center; padding: 9px; font-size: 14px; cursor: pointer;
+    border-radius: 8px; color: #64748b; transition: all .18s;
+  }
+  .tabs div.on { background: #fff; color: #1d4ed8; font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+
+  input, select {
+    width: 100%; padding: 11px 12px; border: 1px solid #dfe4ec; border-radius: 9px;
+    font-size: 14px; outline: none; background: #fff; transition: border-color .15s;
+  }
+  input:focus, select:focus { border-color: #3b82f6; }
+  .field { margin-bottom: 12px; }
+  .btn {
+    width: 100%; padding: 12px; border: none; border-radius: 9px; background: #2563eb;
+    color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; transition: background .15s;
+  }
+  .btn:hover { background: #1d4ed8; }
+  .btn:disabled { background: #93b3f0; cursor: not-allowed; }
+  .tip { margin-top: 14px; font-size: 13px; text-align: center; min-height: 18px; }
+  .tip.ok { color: #15803d; }
+  .tip.err { color: #dc2626; }
+
+  /* ============ 主界面 ============ */
+  header {
+    background: #fff; border-bottom: 1px solid #e9edf4; padding: 0 28px;
+    height: 62px; display: flex; align-items: center; justify-content: space-between;
+  }
+  header .logo { font-size: 17px; font-weight: 700; color: #1d4ed8; }
+  header .user { font-size: 14px; color: #64748b; display: flex; align-items: center; gap: 14px; }
+  header .user button {
+    border: 1px solid #e2e8f0; background: #fff; padding: 6px 12px;
+    border-radius: 7px; font-size: 13px; color: #64748b; cursor: pointer;
+  }
+
+  main { max-width: 980px; margin: 0 auto; padding: 26px 20px 60px; }
+
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 22px; }
+  .card {
+    background: #fff; border-radius: 14px; padding: 18px 20px;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, .04);
+  }
+  .card .label { font-size: 13px; color: #8a94a6; margin-bottom: 8px; }
+  .card .num { font-size: 26px; font-weight: 700; letter-spacing: -.5px; }
+  .card.income .num { color: #16a34a; }
+  .card.expense .num { color: #dc2626; }
+  .card.balance .num { color: #1d4ed8; }
+
+  .panel {
+    background: #fff; border-radius: 14px; padding: 22px;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, .04); margin-bottom: 22px;
+  }
+  .panel h2 { font-size: 15px; margin-bottom: 16px; color: #334155; }
+  .form-row { display: grid; grid-template-columns: 1.1fr 1.2fr 1fr 0.9fr 1.4fr auto; gap: 10px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th {
+    text-align: left; padding: 10px 8px; color: #94a3b8; font-weight: 500;
+    font-size: 12.5px; border-bottom: 1px solid #eef2f7;
+  }
+  td { padding: 12px 8px; border-bottom: 1px solid #f3f6fa; }
+  tr:last-child td { border-bottom: none; }
+  .tag {
+    display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 12px;
+  }
+  .tag.out { background: #fef2f2; color: #dc2626; }
+  .tag.in { background: #f0fdf4; color: #16a34a; }
+  .money-out { color: #dc2626; font-weight: 600; }
+  .money-in { color: #16a34a; font-weight: 600; }
+  .del {
+    border: none; background: none; color: #cbd5e1; cursor: pointer; font-size: 13px;
+  }
+  .del:hover { color: #dc2626; }
+  .empty { text-align: center; color: #a8b3c4; padding: 34px 0; font-size: 14px; }
+  .month-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .month-bar input { width: 150px; }
+  @media (max-width: 760px) {
+    .cards { grid-template-columns: 1fr; }
+    .form-row { grid-template-columns: 1fr 1fr; }
+    header { padding: 0 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== 登录 / 注册 ==================== -->
+<div id="authView">
+  <div class="auth-card">
+    <h1>💰 个人记账</h1>
+    <div class="sub">记录每一笔，看清每一分</div>
+
+    <div class="tabs">
+      <div id="tabLogin" class="on" onclick="switchTab('login')">登录</div>
+      <div id="tabReg" onclick="switchTab('reg')">注册</div>
+    </div>
+
+    <div class="field"><input id="auUsername" placeholder="用户名"></div>
+    <div class="field"><input id="auPassword" type="password" placeholder="密码"></div>
+    <div class="field hidden" id="nicknameField"><input id="auNickname" placeholder="昵称（可留空）"></div>
+
+    <button class="btn" id="authBtn" onclick="doAuth()">登 录</button>
+    <div class="tip" id="authTip"></div>
+  </div>
+</div>
+
+<!-- ==================== 主界面 ==================== -->
+<div id="appView" class="hidden">
+  <header>
+    <div class="logo">💰 个人记账</div>
+    <div class="user">
+      <span id="curUser"></span>
+      <button onclick="logout()">退出登录</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="month-bar">
+      <span style="font-size:14px;color:#64748b">统计月份</span>
+      <input type="month" id="monthPicker" onchange="loadSummary()">
+    </div>
+
+    <div class="cards">
+      <div class="card income">
+        <div class="label">本月收入</div>
+        <div class="num" id="sumIncome">¥0.00</div>
+      </div>
+      <div class="card expense">
+        <div class="label">本月支出</div>
+        <div class="num" id="sumExpense">¥0.00</div>
+      </div>
+      <div class="card balance">
+        <div class="label">本月结余</div>
+        <div class="num" id="sumBalance">¥0.00</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>记一笔</h2>
+      <div class="form-row">
+        <select id="fType">
+          <option value="1">支出</option>
+          <option value="2">收入</option>
+        </select>
+        <select id="fCategory"></select>
+        <input id="fAmount" type="number" step="0.01" min="0" placeholder="金额">
+        <input id="fDate" type="date">
+        <input id="fRemark" placeholder="备注（可选）">
+        <button class="btn" style="width:auto;padding:11px 20px;white-space:nowrap" onclick="addRecord()">保存</button>
+      </div>
+      <div class="tip" id="addTip" style="text-align:left;margin-top:10px"></div>
+    </div>
+
+    <div class="panel">
+      <h2>我的记录</h2>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:110px">日期</th>
+            <th style="width:80px">类型</th>
+            <th style="width:110px">分类</th>
+            <th style="width:120px">金额</th>
+            <th>备注</th>
+            <th style="width:60px"></th>
+          </tr>
+        </thead>
+        <tbody id="recordBody"></tbody>
+      </table>
+      <div class="empty hidden" id="emptyTip">还没有记录，在上面记第一笔吧 👆</div>
+    </div>
+  </main>
+</div>
+
+<script>
+/* ================= 全局状态 ================= */
+const API = '';                       // 同源，直接写相对路径
+let currentUser = null;               // { userId, nickname }
+let currentMode = 'login';            // login | reg
+
+const CATEGORIES = {
+  '1': ['餐饮', '交通', '购物', '居住', '娱乐', '医疗', '其他'],
+  '2': ['工资', '兼职', '理财', '红包', '其他']
+};
+
+/* ================= 工具函数 ================= */
+function $(id) { return document.getElementById(id); }
+
+function money(n) {
+  return '¥' + Number(n || 0).toFixed(2);
+}
+
+function todayStr() {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+function monthStr() {
+  return todayStr().slice(0, 7);
+}
+
+function tip(el, text, ok) {
+  el.textContent = text;
+  el.className = 'tip ' + (ok ? 'ok' : 'err');
+  if (!text) el.className = 'tip';
+}
+
+/* ================= 登录注册 ================= */
+function switchTab(mode) {
+  currentMode = mode;
+  $('tabLogin').className = mode === 'login' ? 'on' : '';
+  $('tabReg').className = mode === 'reg' ? 'on' : '';
+  $('nicknameField').className = mode === 'reg' ? 'field' : 'field hidden';
+  $('authBtn').textContent = mode === 'login' ? '登 录' : '注 册';
+  tip($('authTip'), '');
+}
+
+async function doAuth() {
+  const username = $('auUsername').value.trim();
+  const password = $('auPassword').value;
+  const nickname = $('auNickname').value.trim();
+
+  if (!username || !password) {
+    return tip($('authTip'), '请填写用户名和密码');
+  }
+
+  const btn = $('authBtn');
+  btn.disabled = true;
+  tip($('authTip'), '请求中...', true);
+
+  try {
+    const url = currentMode === 'login' ? '/login' : '/register';
+    const res = await fetch(API + url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, nickname })
+    });
+    const data = await res.json();
+
+    if (data.code !== 0) {
+      return tip($('authTip'), data.msg || '操作失败');
+    }
+
+    if (currentMode === 'reg') {
+      tip($('authTip'), '注册成功，正在自动登录...', true);
+      currentMode = 'login';
+      return doAuth();
+    }
+
+    // 登录成功
+    currentUser = { userId: data.userId, nickname: data.nickname || username };
+    localStorage.setItem('book_user', JSON.stringify(currentUser));
+    enterApp();
+
+  } catch (e) {
+    tip($('authTip'), '网络异常：' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function logout() {
+  localStorage.removeItem('book_user');
+  currentUser = null;
+  $('appView').className = 'hidden';
+  $('authView').className = '';
+  $('auPassword').value = '';
+  tip($('authTip'), '');
+}
+
+/* ================= 主界面 ================= */
+function enterApp() {
+  $('authView').className = 'hidden';
+  $('appView').className = '';
+  $('curUser').textContent = '你好，' + currentUser.nickname;
+  $('monthPicker').value = monthStr();
+  $('fDate').value = todayStr();
+  fillCategories();
+  loadRecords();
+  loadSummary();
+}
+
+function fillCategories() {
+  const list = CATEGORIES[$('fType').value] || [];
+  $('fCategory').innerHTML = list.map(c => `<option>${c}</option>`).join('');
+}
+
+$('fType').addEventListener('change', fillCategories);
+
+async function addRecord() {
+  const amount = parseFloat($('fAmount').value);
+  if (!amount || amount <= 0) {
+    return tip($('addTip'), '请输入正确的金额');
+  }
+  if (!$('fDate').value) {
+    return tip($('addTip'), '请选择日期');
+  }
+
+  const body = {
+    userId: String(currentUser.userId),
+    type: $('fType').value,
+    category: $('fCategory').value,
+    amount: amount.toFixed(2),
+    recordDate: $('fDate').value,
+    remark: $('fRemark').value.trim()
+  };
+
+  try {
+    const res = await fetch(API + '/record/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (data.code !== 0) {
+      return tip($('addTip'), data.msg || '保存失败');
+    }
+    tip($('addTip'), '✅ 记账成功', true);
+    $('fAmount').value = '';
+    $('fRemark').value = '';
+    loadRecords();
+    loadSummary();
+  } catch (e) {
+    tip($('addTip'), '网络异常：' + e.message);
+  }
+}
+
+async function loadRecords() {
+  try {
+    const res = await fetch(`${API}/record/list?userId=${currentUser.userId}`);
+    const list = await res.json();
+    const tbody = $('recordBody');
+
+    if (!list || list.length === 0) {
+      tbody.innerHTML = '';
+      $('emptyTip').className = 'empty';
+      return;
+    }
+    $('emptyTip').className = 'empty hidden';
+
+    tbody.innerHTML = list.map(r => {
+      const isOut = r.type === 1;
+      return `<tr>
+        <td>${r.recordDate}</td>
+        <td><span class="tag ${isOut ? 'out' : 'in'}">${isOut ? '支出' : '收入'}</span></td>
+        <td>${r.category}</td>
+        <td class="${isOut ? 'money-out' : 'money-in'}">${isOut ? '-' : '+'}${money(r.amount)}</td>
+        <td style="color:#94a3b8">${r.remark || '-'}</td>
+        <td><button class="del" onclick="deleteRecord(${r.id})">删除</button></td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function deleteRecord(id) {
+  if (!confirm('确定删除这条记录吗？')) return;
+  try {
+    const res = await fetch(API + '/record/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: String(id), userId: String(currentUser.userId) })
+    });
+    const data = await res.json();
+    if (data.code !== 0) {
+      return alert(data.msg || '删除失败');
+    }
+    loadRecords();
+    loadSummary();
+  } catch (e) {
+    alert('网络异常：' + e.message);
+  }
+}
+
+async function loadSummary() {
+  const month = $('monthPicker').value || monthStr();
+  try {
+    const res = await fetch(`${API}/record/summary?userId=${currentUser.userId}&month=${month}`);
+    const data = await res.json();
+    const d = (data && data.data) || {};
+    const income = Number(d.income || 0);
+    const expense = Number(d.expense || 0);
+    $('sumIncome').textContent = money(income);
+    $('sumExpense').textContent = money(expense);
+    $('sumBalance').textContent = money(income - expense);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+/* ================= 启动 ================= */
+(function init() {
+  const saved = localStorage.getItem('book_user');
+  if (saved) {
+    try {
+      currentUser = JSON.parse(saved);
+      enterApp();
+      return;
+    } catch (e) { /* ignore */ }
+  }
+  $('auUsername').focus();
+})();
+</script>
+</body>
+</html>
