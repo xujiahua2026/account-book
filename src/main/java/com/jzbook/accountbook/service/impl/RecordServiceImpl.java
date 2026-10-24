@@ -53,6 +53,24 @@ public class RecordServiceImpl implements RecordService {
     }
 
     @Override
+    public boolean update(Record record) {
+        if (record.getId() == null || record.getUserId() == null) {
+            throw new IllegalArgumentException("记录ID不能为空");
+        }
+        if (record.getType() == null || (record.getType() != 1 && record.getType() != 2)) {
+            throw new IllegalArgumentException("类型只能是1（支出）或2（收入）");
+        }
+        if (record.getCategory() == null || record.getCategory().isBlank()) {
+            throw new IllegalArgumentException("分类不能为空");
+        }
+        if (record.getAmount() == null || record.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("金额必须大于0");
+        }
+        // SQL 中同时匹配 id 与 user_id，保证只能改自己的记录
+        return recordMapper.update(record) > 0;
+    }
+
+    @Override
     public Map<String, Object> summary(Long userId, String month) {
         if (userId == null || month == null || month.isBlank()) {
             throw new IllegalArgumentException("用户ID和月份不能为空");

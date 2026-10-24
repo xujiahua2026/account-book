@@ -18,6 +18,11 @@ public interface RecordMapper {
     @Delete("DELETE FROM t_record WHERE id = #{id} AND user_id = #{userId}")
     int deleteById(@Param("id") Long id, @Param("userId") Long userId);
 
+    @Update("UPDATE t_record SET type = #{type}, category = #{category}, amount = #{amount}, " +
+            "record_date = #{recordDate}, remark = #{remark} " +
+            "WHERE id = #{id} AND user_id = #{userId}")
+    int update(Record record);
+
 
     @Select("SELECT " +
             "IFNULL(SUM(CASE WHEN type = 1 THEN amount ELSE 0 END), 0) AS expense, " +

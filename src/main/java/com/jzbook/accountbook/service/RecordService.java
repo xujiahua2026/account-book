@@ -19,6 +19,9 @@ public interface RecordService {
     /** 删除记录，返回是否删除成功（含归属校验） */
     boolean delete(Long id, Long userId);
 
+    /** 修改记录，返回是否修改成功（含归属校验） */
+    boolean update(Record record);
+
     /** 按月统计收入和支出 */
     Map<String, Object> summary(Long userId, String month);
 }

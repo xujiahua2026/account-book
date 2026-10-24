@@ -71,6 +71,33 @@ public class RecordController {
         return result;
     }
 
+    /** 修改一条记录（带归属校验） */
+    @PostMapping("/update")
+    public Map<String, Object> update(@RequestBody Map<String, String> body) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            Record r = new Record();
+            r.setId(Long.parseLong(body.get("id")));
+            r.setUserId(Long.parseLong(body.get("userId")));
+            r.setType(Integer.parseInt(body.get("type")));
+            r.setCategory(body.get("category"));
+            r.setAmount(new BigDecimal(body.get("amount")));
+            r.setRecordDate(LocalDate.parse(body.get("recordDate")));
+            r.setRemark(body.get("remark"));
+
+            boolean ok = recordService.update(r);
+            result.put("code", ok ? 0 : 404);
+            result.put("msg", ok ? "修改成功" : "记录不存在或无权修改");
+        } catch (IllegalArgumentException e) {
+            result.put("code", 400);
+            result.put("msg", e.getMessage());
+        } catch (Exception e) {
+            result.put("code", 400);
+            result.put("msg", "参数格式有误，请检查金额和日期");
+        }
+        return result;
+    }
+
     /** 按月统计收入/支出 */
     @GetMapping("/summary")
     public Map<String, Object> summary(@RequestParam Long userId, @RequestParam String month) {
