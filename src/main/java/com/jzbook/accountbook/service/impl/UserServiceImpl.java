@@ -1,6 +1,7 @@
 package com.jzbook.accountbook.service.impl;
 
 import com.jzbook.accountbook.entity.User;
+import com.jzbook.accountbook.exception.AuthException;
 import com.jzbook.accountbook.mapper.UserMapper;
 import com.jzbook.accountbook.service.UserService;
 import org.springframework.stereotype.Service;
@@ -45,7 +46,7 @@ public class UserServiceImpl implements UserService {
 
         // 用户不存在与密码错误返回同一提示，避免账号枚举
         if (user == null || !user.getPassword().equals(md5)) {
-            throw new IllegalArgumentException("用户名或密码错误");
+            throw new AuthException("用户名或密码错误");
         }
         return user;
     }
