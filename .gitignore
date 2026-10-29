@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### 本地私密配置（含API密钥，禁止提交）
+ai-local.properties

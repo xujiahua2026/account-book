@@ -52,6 +52,13 @@ public class GlobalExceptionHandler {
         return build(400, "缺少必要参数：" + e.getParameterName());
     }
 
+    /** 外部依赖异常（如大模型不可用），把提示返回给用户便于排查，但不暴露堆栈 */
+    @ExceptionHandler(IllegalStateException.class)
+    public Map<String, Object> handleIllegalState(IllegalStateException e) {
+        log.error("服务状态异常: {}", e.getMessage());
+        return build(500, e.getMessage() == null ? "服务暂时不可用" : e.getMessage());
+    }
+
     /** 其余未预料的异常：记录日志，但不把内部细节暴露给前端 */
     @ExceptionHandler(Exception.class)
     public Map<String, Object> handleOther(Exception e) {

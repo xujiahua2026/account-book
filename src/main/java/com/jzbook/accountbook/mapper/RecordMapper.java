@@ -10,6 +10,7 @@ public interface RecordMapper {
 
     @Insert("INSERT INTO t_record(user_id, type, category, amount, record_date, remark) " +
             "VALUES(#{userId}, #{type}, #{category}, #{amount}, #{recordDate}, #{remark})")
+    @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Record record);
 
     @Select("SELECT * FROM t_record WHERE user_id = #{userId} ORDER BY record_date DESC, id DESC")
