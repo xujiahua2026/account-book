@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -36,7 +37,9 @@ public class RecordController {
         Record r = toEntity(req);
         r.setUserId(userId);
         recordService.add(r);
-        return Result.ok("记账成功", Map.of("id", r.getId()));
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", r.getId());
+        return Result.ok("记账成功", data);
     }
 
     /** 查询我的全部记录 */
