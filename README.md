@@ -132,7 +132,24 @@ docs/api-test.http                  接口测试用例（含 Token 自动提取�
 
 ## 测试
 
-使用 JUnit 5 + Spring Boot Test 编写数据访问层单元测试（`src/test/java/.../MapperTest.java`），4 个用例全部通过：
+共 **15 个自动化测试用例全部通过**，分两层：
+
+### 接口层（MockMvc，`src/test/java/.../ApiTest.java`，10 个）
+
+| 测试用例 | 验证内容 |
+|---|---|
+| listWithoutTokenShouldReturn401 | 不带 Token 访问业务接口 → HTTP 401 |
+| listWithForgedTokenShouldReturn401 | 伪造 Token（签名不符）→ HTTP 401 |
+| aiEndpointWithoutTokenShouldReturn401 | AI 接口同样受保护 |
+| listWithValidTokenShouldReturnCode0 | 合法 Token 可正常查列表，响应为统一结构 |
+| addRecordWithZeroAmountShouldReturn400 | 金额为 0 → 参数校验拦截 |
+| addRecordWithInvalidTypeShouldReturn400 | type=3 → 校验拦截 |
+| addRecordWithBlankCategoryShouldReturn400 | 分类为空 → 校验拦截 |
+| registerWithShortUsernameShouldReturn400 | 用户名 2 位 → 校验拦截 |
+| registerWithShortPasswordShouldReturn400 | 密码 3 位 → 校验拦截 |
+| addRecordSuccessShouldReturnId | 正常记账返回 code=0 且回填自增 id |
+
+### 数据访问层（`MapperTest.java`，4 个）
 
 | 测试用例 | 验证内容 |
 |---|---|
@@ -142,6 +159,8 @@ docs/api-test.http                  接口测试用例（含 Token 自动提取�
 | deleteOthersRecordShouldFail | 越权删除影响 0 行，本人删除成功 |
 
 测试类使用 `@Transactional`，每个用例执行完自动回滚，不污染数据库。
+
+运行：`./mvnw test`
 
 ## 后续计划
 
