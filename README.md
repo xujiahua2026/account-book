@@ -2,6 +2,12 @@
 
 基于 Spring Boot + MyBatis + MySQL 的个人收支记账系统，支持注册登录、收支记录增删改查、月度统计，并接入大模型实现「一句话记账」。
 
+## 界面预览
+
+| 主界面（统计 + AI 记账 + 记录列表） | 登录页 |
+|---|---|
+| ![主界面](docs/screenshots/main.png) | ![登录页](docs/screenshots/login.png) |
+
 ## 技术栈
 
 | 层次 | 技术 |
@@ -120,3 +126,7 @@ src/main/resources/
 - [x] AI 一句话记账（大模型接入）
 - [ ] Token 登录态与接口鉴权
 - [ ] 部署至云服务器
+
+## License
+
+本项目基于 [MIT](LICENSE) 协议开源。
