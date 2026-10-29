@@ -1,6 +1,7 @@
 package com.jzbook.accountbook;
 
 import com.jzbook.accountbook.entity.Record;
+import com.jzbook.accountbook.security.AuthInterceptor;
 import com.jzbook.accountbook.service.AiService;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,14 +40,13 @@ public class AiController {
 
     /**
      * 一句话记账
-     * 请求：{"userId":"2","text":"昨天午饭38块"}
+     * 请求头：Authorization: Bearer &lt;token&gt;
+     * 请求体：{"text":"昨天午饭38块"}
      */
     @PostMapping("/record")
-    public Map<String, Object> record(@RequestBody Map<String, String> body) {
-        Record r = aiService.parseAndSave(
-                Long.parseLong(body.get("userId")),
-                body.get("text")
-        );
+    public Map<String, Object> record(@RequestAttribute(AuthInterceptor.ATTR_USER_ID) Long userId,
+                                      @RequestBody Map<String, String> body) {
+        Record r = aiService.parseAndSave(userId, body.get("text"));
 
         Map<String, Object> data = new HashMap<>();
         data.put("id", r.getId());

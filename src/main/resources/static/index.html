@@ -247,6 +247,35 @@ const CATEGORIES = {
 /* ================= 工具函数 ================= */
 function $(id) { return document.getElementById(id); }
 
+/* ---- 登录态：Token 存 localStorage，所有请求自动带上 ---- */
+function getToken() { return localStorage.getItem('book_token') || ''; }
+
+function authHeaders(base) {
+  const h = Object.assign({}, base || {});
+  const t = getToken();
+  if (t) h['Authorization'] = 'Bearer ' + t;
+  return h;
+}
+
+/** 统一请求入口：自动带 Token，401 自动退出登录 */
+async function apiFetch(url, options) {
+  const opt = Object.assign({}, options || {});
+  opt.headers = authHeaders(opt.headers);
+
+  const res = await fetch(API + url, opt);
+  let data = null;
+  try { data = await res.json(); } catch (e) { data = null; }
+
+  if (res.status === 401 || (data && data.code === 401)) {
+    logout();
+    throw new Error('登录已过期，请重新登录');
+  }
+  if (data === null) {
+    throw new Error('服务返回异常（HTTP ' + res.status + '）');
+  }
+  return data;
+}
+
 function money(n) {
   return '¥' + Number(n || 0).toFixed(2);
 }
@@ -301,18 +330,18 @@ async function doAuth() {
     const data = await res.json();
 
     if (data.code !== 0) {
+      // 401 之外的业务错误（注册时用户名重复、登录密码错误等）
       return tip($('authTip'), data.msg || '操作失败');
     }
 
-    if (currentMode === 'reg') {
-      tip($('authTip'), '注册成功，正在自动登录...', true);
-      currentMode = 'login';
-      return doAuth();
-    }
-
-    // 登录成功
+    // 注册成功会直接返回 token，无需再登录一次
     currentUser = { userId: data.userId, nickname: data.nickname || username };
     localStorage.setItem('book_user', JSON.stringify(currentUser));
+    if (data.token) {
+      localStorage.setItem('book_token', data.token);
+    }
+
+    tip($('authTip'), currentMode === 'reg' ? '注册成功' : '登录成功', true);
     enterApp();
 
   } catch (e) {
@@ -324,6 +353,7 @@ async function doAuth() {
 
 function logout() {
   localStorage.removeItem('book_user');
+  localStorage.removeItem('book_token');
   currentUser = null;
   $('appView').className = 'hidden';
   $('authView').className = '';
@@ -360,7 +390,6 @@ async function addRecord() {
   }
 
   const body = {
-    userId: String(currentUser.userId),
     type: $('fType').value,
     category: $('fCategory').value,
     amount: amount.toFixed(2),
@@ -374,12 +403,11 @@ async function addRecord() {
   }
 
   try {
-    const res = await fetch(API + (isEdit ? '/record/update' : '/record/add'), {
+    const data = await apiFetch(isEdit ? '/record/update' : '/record/add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
-    const data = await res.json();
     if (data.code !== 0) {
       return tip($('addTip'), data.msg || '保存失败');
     }
@@ -410,12 +438,11 @@ async function aiRecord() {
   tip($('aiTip'), '');
 
   try {
-    const res = await fetch(API + '/ai/record', {
+    const data = await apiFetch('/ai/record', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: String(currentUser.userId), text: text })
+      body: JSON.stringify({ text: text })
     });
-    const data = await res.json();
     if (data.code !== 0) {
       return tip($('aiTip'), data.msg || '没识别出来，换个说法试试');
     }
@@ -464,8 +491,7 @@ function resetForm() {
 
 async function loadRecords() {
   try {
-    const res = await fetch(`${API}/record/list?userId=${currentUser.userId}`);
-    const list = await res.json();
+    const list = await apiFetch('/record/list');
     currentRecords = list || [];
     const tbody = $('recordBody');
 
@@ -498,12 +524,11 @@ async function loadRecords() {
 async function deleteRecord(id) {
   if (!confirm('确定删除这条记录吗？')) return;
   try {
-    const res = await fetch(API + '/record/delete', {
+    const data = await apiFetch('/record/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: String(id), userId: String(currentUser.userId) })
+      body: JSON.stringify({ id: String(id) })
     });
-    const data = await res.json();
     if (data.code !== 0) {
       return alert(data.msg || '删除失败');
     }
@@ -517,8 +542,7 @@ async function deleteRecord(id) {
 async function loadSummary() {
   const month = $('monthPicker').value || monthStr();
   try {
-    const res = await fetch(`${API}/record/summary?userId=${currentUser.userId}&month=${month}`);
-    const data = await res.json();
+    const data = await apiFetch('/record/summary?month=' + month);
     const d = (data && data.data) || {};
     const income = Number(d.income || 0);
     const expense = Number(d.expense || 0);
@@ -533,13 +557,17 @@ async function loadSummary() {
 /* ================= 启动 ================= */
 (function init() {
   const saved = localStorage.getItem('book_user');
-  if (saved) {
+  const token = getToken();
+  if (saved && token) {
     try {
       currentUser = JSON.parse(saved);
       enterApp();
       return;
     } catch (e) { /* ignore */ }
   }
+  // 有用户没 Token（或反之）都视为未登录，清干净重新登录
+  localStorage.removeItem('book_user');
+  localStorage.removeItem('book_token');
   $('auUsername').focus();
 })();
 </script>

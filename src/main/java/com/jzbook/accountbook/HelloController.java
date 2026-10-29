@@ -1,6 +1,7 @@
 package com.jzbook.accountbook;
 
 import com.jzbook.accountbook.entity.User;
+import com.jzbook.accountbook.security.TokenService;
 import com.jzbook.accountbook.service.UserService;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,9 +13,11 @@ import java.util.Map;
 public class HelloController {
 
     private final UserService userService;
+    private final TokenService tokenService;
 
-    public HelloController(UserService userService) {
+    public HelloController(UserService userService, TokenService tokenService) {
         this.userService = userService;
+        this.tokenService = tokenService;
     }
 
     /** 健康检查 */
@@ -23,7 +26,7 @@ public class HelloController {
         return "我的第一个接口跑通了！";
     }
 
-    /** 注册：参数校验与重复校验在 Service 层，异常由全局处理器统一返回 */
+    /** 注册：注册成功后直接签发 Token，免去再登录一次 */
     @PostMapping("/register")
     public Map<String, Object> register(@RequestBody Map<String, String> body) {
         User user = userService.register(
@@ -36,10 +39,12 @@ public class HelloController {
         result.put("code", 0);
         result.put("msg", "注册成功");
         result.put("userId", user.getId());
+        result.put("nickname", user.getNickname());
+        result.put("token", tokenService.create(user.getId()));
         return result;
     }
 
-    /** 登录：凭证错误抛出 IllegalArgumentException，由全局处理器统一返回 */
+    /** 登录：成功签发 Token，后续请求带 Authorization: Bearer <token> */
     @PostMapping("/login")
     public Map<String, Object> login(@RequestBody Map<String, String> body) {
         User user = userService.login(body.get("username"), body.get("password"));
@@ -49,6 +54,7 @@ public class HelloController {
         result.put("msg", "登录成功");
         result.put("userId", user.getId());
         result.put("nickname", user.getNickname());
+        result.put("token", tokenService.create(user.getId()));
         return result;
     }
 }

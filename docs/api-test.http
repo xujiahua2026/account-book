@@ -1,0 +1,47 @@
+### 1. 登录并自动保存 token（先跑这一条，后面的都会用到）
+POST http://localhost:8080/login
+Content-Type: application/json
+
+{
+  "username": "zhangsan",
+  "password": "123456"
+}
+
+> {% client.global.set("token", response.body.token); %}
+
+### 2. 不带 Token 访问（预期 401）
+GET http://localhost:8080/record/list
+
+### 3. 带 Token 查询列表（预期 200 + 数组）
+GET http://localhost:8080/record/list
+Authorization: Bearer {{token}}
+
+### 4. 记一笔（注意：不再需要传 userId）
+POST http://localhost:8080/record/add
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "type": "1",
+  "category": "餐饮",
+  "amount": "38.50",
+  "recordDate": "2026-10-29",
+  "remark": "午饭"
+}
+
+### 5. 月度统计
+GET http://localhost:8080/record/summary?month=2026-10
+Authorization: Bearer {{token}}
+
+### 6. AI 一句话记账
+POST http://localhost:8080/ai/record
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "text": "昨天下午打车26块"
+}
+
+### 7. 伪造 Token（预期 401，签名校验不通过）
+GET http://localhost:8080/record/list
+Authorization: Bearer abc.def
