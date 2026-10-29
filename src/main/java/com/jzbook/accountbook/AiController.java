@@ -1,8 +1,11 @@
 package com.jzbook.accountbook;
 
+import com.jzbook.accountbook.common.Result;
+import com.jzbook.accountbook.dto.AiTextRequest;
 import com.jzbook.accountbook.entity.Record;
 import com.jzbook.accountbook.security.AuthInterceptor;
 import com.jzbook.accountbook.service.AiService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -26,16 +29,15 @@ public class AiController {
      * 配置自检（不返回密钥内容，只返回长度与格式特征），仅用于排查 401
      */
     @GetMapping("/config-check")
-    public Map<String, Object> configCheck() {
-        Map<String, Object> result = new HashMap<>();
-        result.put("code", 0);
-        result.put("keyConfigured", aiService.isKeyConfigured());
-        result.put("keyLength", aiService.getKeyLength());
-        result.put("hasLeadingBom", aiService.hasLeadingBom());
-        result.put("hasWhitespace", aiService.hasWhitespace());
-        result.put("hasQuotes", aiService.hasQuotes());
-        result.put("model", aiService.getModel());
-        return result;
+    public Result<Map<String, Object>> configCheck() {
+        Map<String, Object> data = new HashMap<>();
+        data.put("keyConfigured", aiService.isKeyConfigured());
+        data.put("keyLength", aiService.getKeyLength());
+        data.put("hasLeadingBom", aiService.hasLeadingBom());
+        data.put("hasWhitespace", aiService.hasWhitespace());
+        data.put("hasQuotes", aiService.hasQuotes());
+        data.put("model", aiService.getModel());
+        return Result.ok(data);
     }
 
     /**
@@ -44,9 +46,9 @@ public class AiController {
      * 请求体：{"text":"昨天午饭38块"}
      */
     @PostMapping("/record")
-    public Map<String, Object> record(@RequestAttribute(AuthInterceptor.ATTR_USER_ID) Long userId,
-                                      @RequestBody Map<String, String> body) {
-        Record r = aiService.parseAndSave(userId, body.get("text"));
+    public Result<Map<String, Object>> record(@RequestAttribute(AuthInterceptor.ATTR_USER_ID) Long userId,
+                                              @Valid @RequestBody AiTextRequest req) {
+        Record r = aiService.parseAndSave(userId, req.getText());
 
         Map<String, Object> data = new HashMap<>();
         data.put("id", r.getId());
@@ -56,10 +58,6 @@ public class AiController {
         data.put("recordDate", r.getRecordDate());
         data.put("remark", r.getRemark());
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("code", 0);
-        result.put("msg", "已记账：" + r.getRemark());
-        result.put("data", data);
-        return result;
+        return Result.ok("已记账：" + r.getRemark(), data);
     }
 }

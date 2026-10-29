@@ -335,10 +335,11 @@ async function doAuth() {
     }
 
     // 注册成功会直接返回 token，无需再登录一次
-    currentUser = { userId: data.userId, nickname: data.nickname || username };
+    const payload = data.data || {};
+    currentUser = { userId: payload.userId, nickname: payload.nickname || username };
     localStorage.setItem('book_user', JSON.stringify(currentUser));
-    if (data.token) {
-      localStorage.setItem('book_token', data.token);
+    if (payload.token) {
+      localStorage.setItem('book_token', payload.token);
     }
 
     tip($('authTip'), currentMode === 'reg' ? '注册成功' : '登录成功', true);
@@ -491,8 +492,9 @@ function resetForm() {
 
 async function loadRecords() {
   try {
-    const list = await apiFetch('/record/list');
-    currentRecords = list || [];
+    const data = await apiFetch('/record/list');
+    const list = (data && data.data) || [];
+    currentRecords = list;
     const tbody = $('recordBody');
 
     if (!list || list.length === 0) {

@@ -23,7 +23,9 @@
 ## 功能特性
 
 - **用户模块**：注册（用户名查重、MD5 密码加密）、登录（凭证校验、统一错误提示防账号枚举）
+- **登录鉴权**：HMAC-SHA256 签名 Token + 拦截器，`userId` 由 Token 解析，接口不再接收前端传入的用户标识
 - **记账模块**：新增 / 查询列表 / 修改 / 删除 / 按月统计，前端支持点「编辑」回填改账
+- **参数校验**：`@Valid` + Jakarta Validation 注解声明式校验（非空、长度、金额>0、类型枚举），错误统一 400 返回
 - **AI 一句话记账**：输入「昨天午饭38块」，大模型解析为结构化 JSON 后自动落库
 - **数据安全**：所有读写 SQL 强制携带 `user_id` 条件实现数据权限隔离，越权修改/删除实测被拦截；金额使用 `BigDecimal` 避免精度丢失
 - **异常处理**：`@RestControllerAdvice` 全局兜底，统一 `code-msg` 响应，内部堆栈只记录日志不外泄
@@ -38,6 +40,12 @@ src/main/java/com/jzbook/accountbook/
 ├── HelloController.java            用户接口（/register、/login）
 ├── RecordController.java           记账接口（/record/*）
 ├── AiController.java               AI 记账接口（/ai/*）
+├── common/Result.java              统一响应结构
+├── config/WebConfig.java           拦截器注册
+├── security/
+│   ├── TokenService.java           HMAC-SHA256 签名 Token
+│   └── AuthInterceptor.java        登录拦截器（userId 注入）
+├── dto/                            请求体 + 参数校验注解
 ├── entity/
 │   ├── User.java
 │   └── Record.java
@@ -52,23 +60,35 @@ src/main/java/com/jzbook/accountbook/
     └── RecordMapper.java
 
 src/main/resources/
-├── application.properties          数据库、MyBatis、AI 配置
+├── application.properties          数据库、MyBatis、AI、Token 配置
 ├── db/schema.sql                   建表脚本
 └── static/index.html               前端页面（单页）
+
+docs/api-test.http                  接口测试用例（含 Token 自动提取）
 ```
+
+## 鉴权设计
+
+- 登录/注册成功后签发 **HMAC-SHA256 签名 Token**（格式：`base64(userId:过期时间).签名`），前端存 localStorage
+- 业务接口（`/record/**`、`/ai/**`）由 `AuthInterceptor` 统一校验 `Authorization: Bearer <token>`
+- **userId 一律从 Token 解析**，接口不再接收前端传入的 userId —— 从根源上消除越权读写
+- 签名比较使用 `MessageDigest.isEqual`（定长时间比较，防时序攻击）；密钥通过环境变量 `APP_TOKEN_SECRET` 注入
+- 校验失败返回真实 HTTP 401 + `{"code":401,"msg":"未登录或登录已过期"}`，前端捕获后自动退出登录
 
 ## 接口文档
 
+除注册、登录、健康检查外，所有接口都需在请求头带 `Authorization: Bearer <token>`。
+
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| POST | /register | 注册（username、password、nickname） |
-| POST | /login | 登录，返回 userId、nickname |
-| POST | /record/add | 新增记录（userId、type、category、amount、recordDate、remark） |
-| GET | /record/list?userId= | 查询用户全部记录 |
-| POST | /record/update | 修改记录（id、userId + 记录字段） |
-| POST | /record/delete | 删除记录（id、userId） |
-| GET | /record/summary?userId=&month= | 按月统计（month 格式 yyyy-MM） |
-| POST | /ai/record | 一句话记账（userId、text） |
+| POST | /register | 注册（username、password、nickname），返回 token |
+| POST | /login | 登录，返回 userId、nickname、token |
+| POST | /record/add | 新增记录（type、category、amount、recordDate、remark） |
+| GET | /record/list | 查询当前用户全部记录（userId 取自 Token） |
+| POST | /record/update | 修改记录（id + 记录字段） |
+| POST | /record/delete | 删除记录（id） |
+| GET | /record/summary?month= | 按月统计（month 格式 yyyy-MM） |
+| POST | /ai/record | 一句话记账（text） |
 | GET | /ai/config-check | 大模型配置自检（不返回密钥内容） |
 
 统一响应格式：
@@ -78,6 +98,11 @@ src/main/resources/
 ```
 
 `code` 约定：0 成功、400 参数错误、401 未认证、404 资源不存在、500 系统异常。
+参数校验由 `@Valid` + Jakarta Validation 注解完成，错误信息统一由 `GlobalExceptionHandler` 返回，例如：
+
+```json
+{ "code": 400, "msg": "金额必须大于 0", "data": null }
+```
 
 ## AI 一句话记账的实现要点
 
@@ -123,8 +148,10 @@ src/main/resources/
 - [x] Controller–Service–Mapper 分层重构
 - [x] UPDATE 接口与前端编辑
 - [x] 全局异常处理
+- [x] Token 登录态与接口鉴权
+- [x] 参数校验与统一响应结构
 - [x] AI 一句话记账（大模型接入）
-- [ ] Token 登录态与接口鉴权
+- [ ] 接口层自动化测试（MockMvc）
 - [ ] 部署至云服务器
 
 ## License
