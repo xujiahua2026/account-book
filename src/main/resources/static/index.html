@@ -99,9 +99,29 @@
   .empty { text-align: center; color: #a8b3c4; padding: 34px 0; font-size: 14px; }
   .month-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
   .month-bar input { width: 150px; }
+
+  /* ============ AI 一句话记账 ============ */
+  .ai-panel {
+    border: 1px solid #dbeafe;
+    background: linear-gradient(135deg, #f4f9ff 0%, #ffffff 55%);
+  }
+  .ai-panel h2 { display: flex; align-items: center; gap: 9px; }
+  .ai-badge {
+    font-size: 11px; font-weight: 600; color: #1d4ed8; background: #e0edff;
+    padding: 2px 9px; border-radius: 20px; letter-spacing: .3px;
+  }
+  .ai-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+  .ai-row .btn { width: auto; padding: 11px 24px; white-space: nowrap; }
+  .ai-examples { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 11px; }
+  .ai-chip {
+    font-size: 12px; color: #64748b; background: #fff; border: 1px solid #e5ebf4;
+    padding: 5px 11px; border-radius: 20px; cursor: pointer; transition: all .15s;
+  }
+  .ai-chip:hover { color: #1d4ed8; border-color: #bfd6ff; background: #eff5ff; }
   @media (max-width: 760px) {
     .cards { grid-template-columns: 1fr; }
     .form-row { grid-template-columns: 1fr 1fr; }
+    .ai-row { grid-template-columns: 1fr; }
     header { padding: 0 16px; }
   }
 </style>
@@ -157,6 +177,22 @@
         <div class="label">本月结余</div>
         <div class="num" id="sumBalance">¥0.00</div>
       </div>
+    </div>
+
+    <div class="panel ai-panel">
+      <h2>✨ AI 一句话记账 <span class="ai-badge">大模型</span></h2>
+      <div class="ai-row">
+        <input id="aiText" placeholder="说一句话就能记账，例如：昨天午饭38块"
+               onkeydown="if(event.key==='Enter') aiRecord()">
+        <button class="btn" id="aiBtn" onclick="aiRecord()">AI 记账</button>
+      </div>
+      <div class="ai-examples">
+        <span class="ai-chip" onclick="fillAi('昨天午饭38块')">昨天午饭38块</span>
+        <span class="ai-chip" onclick="fillAi('今天打车26块5')">今天打车26块5</span>
+        <span class="ai-chip" onclick="fillAi('今天发工资5000')">今天发工资5000</span>
+        <span class="ai-chip" onclick="fillAi('上周五聚餐花了120')">上周五聚餐花了120</span>
+      </div>
+      <div class="tip" id="aiTip" style="text-align:left"></div>
     </div>
 
     <div class="panel">
@@ -353,6 +389,49 @@ async function addRecord() {
     loadSummary();
   } catch (e) {
     tip($('addTip'), '网络异常：' + e.message);
+  }
+}
+
+/* ================= AI 一句话记账 ================= */
+function fillAi(t) {
+  $('aiText').value = t;
+  $('aiText').focus();
+}
+
+async function aiRecord() {
+  const text = $('aiText').value.trim();
+  if (!text) {
+    return tip($('aiTip'), '先说一句话，比如：昨天午饭38块');
+  }
+
+  const btn = $('aiBtn');
+  btn.disabled = true;
+  btn.textContent = '识别中…';
+  tip($('aiTip'), '');
+
+  try {
+    const res = await fetch(API + '/ai/record', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: String(currentUser.userId), text: text })
+    });
+    const data = await res.json();
+    if (data.code !== 0) {
+      return tip($('aiTip'), data.msg || '没识别出来，换个说法试试');
+    }
+
+    const d = data.data;
+    const kind = d.type === 1 ? '支出' : '收入';
+    tip($('aiTip'),
+      `✅ ${data.msg}　${kind} · ${d.category} · ¥${Number(d.amount).toFixed(2)}（${d.recordDate}）`, true);
+    $('aiText').value = '';
+    loadRecords();
+    loadSummary();
+  } catch (e) {
+    tip($('aiTip'), '网络异常：' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'AI 记账';
   }
 }
 
